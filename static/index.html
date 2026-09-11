@@ -6,10 +6,11 @@
   <meta name="theme-color" content="#f4f5f7">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Уник">
+  <meta name="apple-mobile-web-app-title" content="Финунивер им. Н.Э. Баумана">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" sizes="1024x1024" href="/exec-e0a9f7d8-6df4-47a5-816d-71bf2db2147a.png">
+  <link rel="apple-touch-icon" sizes="1024x1024" href="/exec-5fe81217-9624-47c1-b7b3-39e57179c4a1.png">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/sheet.css">
   <title>Уник — расписание</title>
 </head>
 <body>
@@ -27,6 +28,15 @@
     <section id="status" class="status">Обновляем расписание…</section>
     <section id="lessons" aria-live="polite"></section>
   </main>
+  <div id="sheet" class="sheet-wrap" hidden>
+    <button class="sheet-backdrop" aria-label="Закрыть"></button>
+    <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="grabber"></div><button id="sheet-close" class="sheet-close" aria-label="Закрыть">×</button>
+      <span id="sheet-uni" class="uni"></span><span id="sheet-kind" class="kind"></span>
+      <h2 id="sheet-title"></h2><div id="sheet-time" class="sheet-time"></div>
+      <dl><div><dt>Преподаватель</dt><dd id="sheet-teacher"></dd></div><div><dt>Место</dt><dd id="sheet-place"></dd></div></dl>
+    </section>
+  </div>
   <template id="lesson-template">
     <article class="lesson">
       <div class="time"><strong></strong><span></span></div>
