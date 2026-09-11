@@ -16,18 +16,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Upload application
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ftp-unik-schedule.alwaysdata.net
-          username: unik-schedule_deploy
-          password: ${{ secrets.AD_FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          local-dir: ./
-          server-dir: ./
-          exclude: |
-            **/.git*
-            **/.git*/**
-            work/**
-            outputs/**
+      - name: Upload application over HTTPS WebDAV
+        env:
+          DAV_PASSWORD: ${{ secrets.AD_FTP_PASSWORD }}
+        run: |
+          base="https://webdav-unik-schedule.alwaysdata.net"
+          auth="unik-schedule_deploy:${DAV_PASSWORD}"
+          curl --silent --user "$auth" -X MKCOL "$base/static/" || true
+          for file in application.py requirements.txt README.md static/index.html static/style.css static/app.js static/manifest.webmanifest static/icon.svg static/sw.js; do
+            curl --fail --silent --show-error --user "$auth" --upload-file "$file" "$base/$file"
+          done
