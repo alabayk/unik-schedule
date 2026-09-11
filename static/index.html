@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f5f7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Уник">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="stylesheet" href="/style.css">
+  <title>Уник — расписание</title>
+</head>
+<body>
+  <main>
+    <header>
+      <div><p class="eyebrow">ЦФПУ25-2 · ИУ3С-32Б</p><h1>Расписание</h1></div>
+      <button id="today" class="round" aria-label="Сегодня">Сегодня</button>
+    </header>
+    <section class="weekbar" aria-label="Выбор недели">
+      <button id="prev" aria-label="Предыдущая неделя">‹</button>
+      <div><strong id="range"></strong><span id="week-type"></span></div>
+      <button id="next" aria-label="Следующая неделя">›</button>
+    </section>
+    <nav id="days" aria-label="Дни недели"></nav>
+    <section id="status" class="status">Обновляем расписание…</section>
+    <section id="lessons" aria-live="polite"></section>
+  </main>
+  <template id="lesson-template">
+    <article class="lesson">
+      <div class="time"><strong></strong><span></span></div>
+      <div class="stripe"></div>
+      <div class="details"><div class="meta"><span class="uni"></span><span class="kind"></span></div><h2></h2><p class="place"></p><p class="teacher"></p></div>
+    </article>
+  </template>
+  <script src="/app.js" defer></script>
+</body>
+</html>
