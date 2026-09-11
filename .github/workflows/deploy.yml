@@ -1,0 +1,33 @@
+name: Deploy to alwaysdata
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload application
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ftp-unik-schedule.alwaysdata.net
+          username: unik-schedule_deploy
+          password: ${{ secrets.AD_FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: ./
+          server-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
+            work/**
+            outputs/**
