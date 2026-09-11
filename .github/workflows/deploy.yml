@@ -23,6 +23,6 @@ jobs:
           base="https://webdav-unik-schedule.alwaysdata.net"
           auth="unik-schedule_deploy:${DAV_PASSWORD}"
           curl --silent --user "$auth" -X MKCOL "$base/static/" || true
-          for file in application.py requirements.txt README.md static/index.html static/style.css static/app.js static/manifest.webmanifest static/icon.svg static/sw.js; do
+          for file in application.py requirements.txt README.md static/index.html static/style.css static/app.js static/manifest.webmanifest static/icon.svg static/exec-e0a9f7d8-6df4-47a5-816d-71bf2db2147a.png static/sw.js; do
             curl --fail --silent --show-error --user "$auth" --upload-file "$file" "$base/$file"
           done
