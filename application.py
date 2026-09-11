@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import re
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from urllib.request import Request, urlopen
+from urllib.parse import parse_qs
 from zoneinfo import ZoneInfo
-
-from flask import Flask, jsonify, request, send_from_directory
-
-app = Flask(__name__, static_folder="static", static_url_path="")
 
 RUZ_GROUP_ID = "164695"
 RUZ_URL = "https://ruz.fa.ru/api/schedule/group/{group}?start={start}&finish={finish}&lng=1"
@@ -119,11 +118,10 @@ def bmstu_lessons(start: date, finish: date) -> list[dict]:
     return output
 
 
-@app.get("/api/schedule")
-def schedule():
+def schedule(query: dict[str, list[str]]) -> dict:
     today = datetime.now(MOSCOW).date()
-    start = parse_day(request.args.get("start"), today - timedelta(days=today.weekday()))
-    finish = parse_day(request.args.get("finish"), start + timedelta(days=13))
+    start = parse_day(query.get("start", [None])[0], today - timedelta(days=today.weekday()))
+    finish = parse_day(query.get("finish", [None])[0], start + timedelta(days=13))
     finish = min(finish, start + timedelta(days=31))
     errors = []
     lessons = []
@@ -133,18 +131,23 @@ def schedule():
         except Exception as exc:
             errors.append({"source": name, "message": type(exc).__name__})
     lessons.sort(key=lambda item: (item["date"], item["start"], item["source"]))
-    return jsonify({"lessons": lessons, "errors": errors, "updatedAt": datetime.now(MOSCOW).isoformat()})
+    return {"lessons": lessons, "errors": errors, "updatedAt": datetime.now(MOSCOW).isoformat()}
 
 
-@app.get("/")
-def index():
-    return send_from_directory(app.static_folder, "index.html")
+STATIC = Path(__file__).with_name("static")
 
 
-@app.get("/<path:path>")
-def assets(path: str):
-    return send_from_directory(app.static_folder, path)
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+def application(environ, start_response):
+    path = environ.get("PATH_INFO", "/")
+    if path == "/api/schedule":
+        body = json.dumps(schedule(parse_qs(environ.get("QUERY_STRING", ""))), ensure_ascii=False).encode()
+        start_response("200 OK", [("Content-Type", "application/json; charset=utf-8"), ("Cache-Control", "no-store")])
+        return [body]
+    relative = "index.html" if path == "/" else path.lstrip("/")
+    target = (STATIC / relative).resolve()
+    if STATIC.resolve() not in target.parents or not target.is_file():
+        start_response("404 Not Found", [("Content-Type", "text/plain; charset=utf-8")])
+        return ["Не найдено".encode("utf-8")]
+    mime = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+    start_response("200 OK", [("Content-Type", mime), ("Cache-Control", "public, max-age=300")])
+    return [target.read_bytes()]
