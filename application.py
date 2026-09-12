@@ -56,6 +56,8 @@ def schedule(query):
 STATIC=Path(__file__).with_name("static")
 def application(environ,start_response):
  path=environ.get("PATH_INFO","/")
+ if path=="/api/calendar" and environ.get("REQUEST_METHOD")=="POST":
+  length=min(int(environ.get("CONTENT_LENGTH") or 0),250000);params=parse_qs(environ["wsgi.input"].read(length).decode("utf-8"));body=params.get("ics",[""])[0].encode("utf-8");start_response("200 OK",[("Content-Type","text/calendar; charset=utf-8"),("Content-Disposition","inline; filename=vanchunik.ics"),("Cache-Control","no-store"),("X-Content-Type-Options","nosniff")]);return [body]
  if path=="/api/schedule":
   body=json.dumps(schedule(parse_qs(environ.get("QUERY_STRING",""))),ensure_ascii=False).encode();start_response("200 OK",[("Content-Type","application/json; charset=utf-8"),("Cache-Control","no-store")]);return [body]
  relative="index.html" if path=="/" else path.lstrip("/");target=(STATIC/relative).resolve()
