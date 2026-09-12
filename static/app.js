@@ -12,34 +12,13 @@ function moveDay(step){showPast=false;selected+=step;if(selected>6){monday=addDa
 function calClose(){const w=$('#calendar-sheet');w.classList.remove('open');setTimeout(()=>w.hidden=true,220)}
 function calOpen(items){calendarItems=items.filter(Boolean);const key='cal:'+calendarItems.map(eventUid).join('|');const state=$('#calendar-state');state.textContent=localStorage.getItem(key)?'Уже добавили':'';state.dataset.key=key;const w=$('#calendar-sheet');w.hidden=false;requestAnimationFrame(()=>w.classList.add('open'))}
 function eventUid(x){let s=[x.source,x.date,x.start,x.end,x.title,x.room].join('|'),h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(16)+'@vanchunik.alwaysdata.net'}
-function icsEsc(s){return String(s||'').replace(/\/g,'\\').replace(/
-/g,'\n').replace(/,/g,'\,').replace(/;/g,'\;')}
+function icsEsc(s){const b=String.fromCharCode(92);return String(s||'').split(b).join(b+b).split(String.fromCharCode(10)).join(b+'n').split(',').join(b+',').split(';').join(b+';')}
 function icsDate(x,time){return x.date.replace(/-/g,'')+'T'+time.replace(':','')+'00'}
-function buildIcs(items,alarm){const stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/.d{3}/,'');let rows=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Vanchunik//Schedule//RU','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:Финунивер им. Н.Э. Баумана'];for(const x of items){rows.push('BEGIN:VEVENT','UID:'+eventUid(x),'DTSTAMP:'+stamp,'DTSTART;TZID=Europe/Moscow:'+icsDate(x,x.start),'DTEND;TZID=Europe/Moscow:'+icsDate(x,x.end),'SUMMARY:'+icsEsc(x.title),'LOCATION:'+icsEsc([x.room,x.building].filter(Boolean).join(' · ')),'DESCRIPTION:'+icsEsc([x.teacher,emailFor(x),x.type].filter(Boolean).join('\n')));if(alarm>0)rows.push('BEGIN:VALARM','TRIGGER:-PT'+alarm+'M','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(x.title),'END:VALARM');rows.push('END:VEVENT')}rows.push('END:VCALENDAR');return rows.join('\r\n')+'\r\n'}
+function buildIcs(items,alarm){const stamp=new Date().toISOString().replaceAll('-','').replaceAll(':','').split('.')[0]+'Z';let rows=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Vanchunik//Schedule//RU','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:Финунивер им. Н.Э. Баумана'];for(const x of items){rows.push('BEGIN:VEVENT','UID:'+eventUid(x),'DTSTAMP:'+stamp,'DTSTART;TZID=Europe/Moscow:'+icsDate(x,x.start),'DTEND;TZID=Europe/Moscow:'+icsDate(x,x.end),'SUMMARY:'+icsEsc(x.title),'LOCATION:'+icsEsc([x.room,x.building].filter(Boolean).join(' · ')),'DESCRIPTION:'+icsEsc([x.teacher,emailFor(x),x.type].filter(Boolean).join('\n')));if(alarm>0)rows.push('BEGIN:VALARM','TRIGGER:-PT'+alarm+'M','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(x.title),'END:VALARM');rows.push('END:VEVENT')}rows.push('END:VCALENDAR');return rows.join('\r\n')+'\r\n'}
 async function addCalendar(){if(!calendarItems.length)return;const alarm=Number(document.querySelector('input[name="alarm"]:checked').value),ics=buildIcs(calendarItems,alarm),file=new File([ics],'vanchunik-'+calendarItems[0].date+'.ics',{type:'text/calendar'});try{if(navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:'Добавить расписание в календарь'});else{const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}localStorage.setItem($('#calendar-state').dataset.key,new Date().toISOString());calClose();if(!$('#sheet').hidden)closeSheet()}catch(e){if(e.name!=='AbortError'){$('#calendar-state').textContent='Не удалось открыть календарь'}}}
 $('#lesson-calendar').onclick=()=>calOpen([selectedLesson]);$('#week-calendar').onclick=()=>calOpen(lessons);$('#calendar-add').onclick=addCalendar;$('#calendar-close').onclick=calClose;$('.calendar-backdrop').onclick=calClose;
 let swipeX=0,swipeY=0,swipeActive=false;const swipeArea=document.querySelector('main');swipeArea.addEventListener('touchstart',e=>{if(e.target.closest('button,select,input,.sheet'))return;swipeX=e.touches[0].clientX;swipeY=e.touches[0].clientY;swipeActive=true;$('#lessons').style.transition='none'},{passive:true});swipeArea.addEventListener('touchmove',e=>{if(!swipeActive)return;const dx=e.touches[0].clientX-swipeX,dy=e.touches[0].clientY-swipeY;if(Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.2){e.preventDefault();const x=Math.max(-110,Math.min(110,dx*.72));$('#lessons').style.transform='translateX('+x+'px)';$('#lessons').style.opacity=1-Math.abs(x)/350}},{passive:false});swipeArea.addEventListener('touchend',e=>{if(!swipeActive)return;swipeActive=false;const root=$('#lessons'),dx=e.changedTouches[0].clientX-swipeX,dy=e.changedTouches[0].clientY-swipeY;root.style.transition='transform .18s ease,opacity .18s ease';if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.25){root.style.transform='translateX('+(dx<0?-180:180)+'px)';root.style.opacity='.15';setTimeout(()=>{moveDay(dx<0?1:-1);root.style.transition='none';root.style.transform='translateX('+(dx<0?80:-80)+'px)';requestAnimationFrame(()=>{root.style.transition='transform .22s ease,opacity .22s ease';root.style.transform='translateX(0)';root.style.opacity='1'})},160)}else{root.style.transform='translateX(0)';root.style.opacity='1'}});
 let pullStart=0,pulling=false;const pull=$('#pull-refresh');addEventListener('touchstart',e=>{if(scrollY===0){pullStart=e.touches[0].clientY;pulling=true}},{passive:true});addEventListener('touchmove',e=>{if(!pulling)return;const d=Math.max(0,Math.min(90,e.touches[0].clientY-pullStart));pull.style.transform='translate(-50%,'+(d-52)+'px)';pull.classList.toggle('ready',d>70)},{passive:true});addEventListener('touchend',()=>{if(!pulling)return;const ready=pull.classList.contains('ready');pulling=false;pull.classList.remove('ready');pull.style.transform='translate(-50%,-52px)';if(ready)load()});$('#prev').onclick=()=>{monday=addDays(monday,-7);selected=0;showPast=false;load()};$('#next').onclick=()=>{monday=addDays(monday,7);selected=0;showPast=false;load()};$('#today').onclick=()=>{monday=startOfWeek(new Date());selected=(new Date().getDay()+6)%7;showPast=false;load()};if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js');load();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
