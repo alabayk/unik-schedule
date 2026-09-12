@@ -16,10 +16,19 @@ let pullStart=0,pulling=false;const pull=$('#pull-refresh');addEventListener('to
 
 
 
+
+
+
+
+
+
+
+
 let currentLesson=null,exportItems=[],exportName='';const baseOpenSheet=openSheet;openSheet=x=>{currentLesson=x;baseOpenSheet(x);const q=[x.building,x.room,'Москва'].filter(Boolean).join(' ');$('#map-btn').disabled=!q;$('#map-btn').onclick=()=>window.open('https://yandex.ru/maps/?text='+encodeURIComponent(q),'_blank','noopener');$('#lesson-calendar').onclick=()=>{closeSheet();setTimeout(()=>openCalendar([x],x.title),230)}};
 function eventId(x){return 'lesson-'+x.source+'-'+x.date+'-'+x.start.replace(':','')+'-'+x.title.toLowerCase().replaceAll(' ','-')}
 function openCalendar(items,name){exportItems=items;exportName=name;const saved=JSON.parse(localStorage.getItem('calendarExports')||'{}'),already=items.length&&items.every(x=>saved[eventId(x)]);$('#calendar-state').textContent=already?'Уже добавили':'';const v=localStorage.getItem('reminder')||'30',radio=document.querySelector('input[name="alarm"][value="'+v+'"]');if(radio)radio.checked=true;const w=$('#calendar-sheet');w.hidden=false;requestAnimationFrame(()=>w.classList.add('open'));document.body.classList.add('locked')}
 function closeCalendar(){const w=$('#calendar-sheet');w.classList.remove('open');document.body.classList.remove('locked');setTimeout(()=>w.hidden=true,220)}
 function icsText(v=''){return String(v).replaceAll(String.fromCharCode(10),' ').replaceAll(',',' ').replaceAll(';',' ')}function icsStamp(d,t){return d.replaceAll('-','')+'T'+t.replace(':','')+'00'}
 function downloadCalendar(items,name,alarm){const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Vanchunik//Schedule//RU','CALSCALE:GREGORIAN','METHOD:PUBLISH'],stamp=new Date().toISOString().replaceAll('-','').replaceAll(':','').split('.')[0]+'Z';items.forEach(x=>{lines.push('BEGIN:VEVENT','UID:'+eventId(x)+'@vanchunik.alwaysdata.net','DTSTAMP:'+stamp,'LAST-MODIFIED:'+stamp,'SEQUENCE:0','DTSTART;TZID=Europe/Moscow:'+icsStamp(x.date,x.start),'DTEND;TZID=Europe/Moscow:'+icsStamp(x.date,x.end),'SUMMARY:'+icsText(x.title),'LOCATION:'+icsText([x.room,x.building].filter(Boolean).join(' · ')),'DESCRIPTION:'+icsText((x.source==='fa'?'Финунивер':'МГТУ')+' · '+(x.teacher||'')));if(alarm>0)lines.push('BEGIN:VALARM','TRIGGER:-PT'+alarm+'M','ACTION:DISPLAY','DESCRIPTION:'+icsText('Скоро: '+x.title),'END:VALARM');lines.push('END:VEVENT')});lines.push('END:VCALENDAR');const url=URL.createObjectURL(new Blob([lines.join(String.fromCharCode(13,10))],{type:'text/calendar;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=(name||'Расписание').replaceAll(' ','-')+'.ics';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);const saved=JSON.parse(localStorage.getItem('calendarExports')||'{}');items.forEach(x=>saved[eventId(x)]=Date.now());localStorage.setItem('calendarExports',JSON.stringify(saved));$('#calendar-state').textContent='Уже добавили'}
-$('#week-calendar').onclick=()=>openCalendar(lessons.filter(x=>x.date>=iso(monday)&&x.date<=iso(addDays(monday,6))),'Расписание '+iso(monday));$('#calendar-close').onclick=closeCalendar;$('.calendar-backdrop').onclick=closeCalendar;$('#calendar-add').onclick=()=>{const alarm=Number(document.querySelector('input[name="alarm"]:checked').value);localStorage.setItem('reminder',alarm);downloadCalendar(exportItems,exportName,alarm)};
+$('#week-calendar').onclick=()=>openCalendar(lessons.filter(x=>x.date>=iso(monday)&&x.date<=iso(addDays(monday,6))),'Расписание '+iso(monday));$('#calendar-close').onclick=closeCalendar;$('.calendar-backdrop').onclick=closeCalendar;$('#calendar-add').onclick=()=>{const alarm=Number(document.querySelector('input[name="alarm"]:checked').value);localStorage.setItem('reminder',alarm);downloadCalendar(exportItems,exportName,alarm);closeCalendar()};
+
