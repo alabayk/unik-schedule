@@ -71,3 +71,4 @@
 main{min-height:100vh;min-height:100dvh;touch-action:pan-y}
 #days{overflow:hidden;touch-action:pan-y;will-change:transform,opacity;user-select:none;-webkit-user-select:none}
 .lesson.focus-flash{animation:focus-flash 1.35s ease}@keyframes focus-flash{0%,100%{box-shadow:0 7px 24px #25365410}25%,65%{box-shadow:0 0 0 4px #1769e044,0 12px 34px #1769e02b;transform:scale(1.015)}}
+nav button.today:not(.active){box-shadow:inset 0 0 0 1px #1769e0;color:#1769e0}
