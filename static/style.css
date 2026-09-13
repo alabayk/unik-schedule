@@ -66,3 +66,6 @@
 
 
 .sheet-email{margin-top:3px!important;color:#1769e0!important;font-size:13px!important;word-break:break-all}
+
+/* Keep horizontal day navigation available across the full screen on empty days. */
+main{min-height:100vh;min-height:100dvh;touch-action:pan-y}

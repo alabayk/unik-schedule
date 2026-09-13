@@ -7,7 +7,7 @@ from urllib.parse import parse_qs
 from zoneinfo import ZoneInfo
 RUZ_GROUP_ID="164695"
 RUZ_URL="https://ruz.fa.ru/api/schedule/group/{group}?start={start}&finish={finish}&lng=1"
-BMSTU_ICS="https://lks.bmstu.ru/lks-back/srv/v2/ics/bad48fd5-ed29-11ef-becd-8753117d52b2"
+BMSTU_URL="https://lks.bmstu.ru/lks-back/api/v1/schedules/groups/bad48fd5-ed29-11ef-becd-8753117d52b2/public"
 MOSCOW=ZoneInfo("Europe/Moscow")
 def fetch_text(url):
  req=Request(url,headers={"User-Agent":"UnikSchedule/1.0"})
@@ -27,25 +27,21 @@ def parse_ics_datetime(value):
  utc=value.endswith("Z");raw=value[:-1] if utc else value;dt=datetime.strptime(raw,"%Y%m%dT%H%M%S")
  return dt.replace(tzinfo=timezone.utc if utc else MOSCOW).astimezone(MOSCOW)
 def bmstu_lessons(start,finish):
- events=[];current=None
- for line in unfold_ics(fetch_text(BMSTU_ICS)):
-  if line=="BEGIN:VEVENT":current={}
-  elif line=="END:VEVENT" and current is not None:events.append(current);current=None
-  elif current is not None and line.startswith("ATTENDEE;"):
-   name=line.partition('CN="')[2].partition('"')[0];address=line.split(":",1)[1].removeprefix("mailto:") if ":" in line else ""
-   current.setdefault("ATTENDEE",[]).append(name);current.setdefault("EMAIL",[]).append(address if "@" in address else "")
-  elif current is not None and ":" in line:
-   key,value=line.split(":",1);current[key.split(";",1)[0]]=value.replace("\\,",",").replace("\\n"," ")
- output=[]
- for event in events:
-  title=event.get("SUMMARY","").strip()
-  if title in {"ФИН УНИВЕРСИТЕТ","Самостоятельная работа"}:continue
-  first=parse_ics_datetime(event["DTSTART"]);last=parse_ics_datetime(event["DTEND"]);rule=event.get("RRULE","");m=re.search(r"INTERVAL=(\d+)",rule);interval=int(m.group(1)) if m else 1
-  while first.date()<start:first+=timedelta(weeks=interval);last+=timedelta(weeks=interval)
-  while first.date()<=finish:
-   if first.date()>=start:output.append({"id":f"bmstu-{event.get('UID','')}-{first.date()}","date":first.date().isoformat(),"start":first.strftime("%H:%M"),"end":last.strftime("%H:%M"),"title":title,"type":event.get("DESCRIPTION",""),"room":event.get("LOCATION","").split(",")[-1].strip(),"building":event.get("LOCATION",""),"teacher":", ".join(event.get("ATTENDEE",[])),"teacherEmail":", ".join(x for x in event.get("EMAIL",[]) if x),"source":"bmstu"})
-   if not rule:break
-   first+=timedelta(weeks=interval);last+=timedelta(weeks=interval)
+ rows=json.loads(fetch_text(BMSTU_URL)).get("data",{}).get("schedule",[])
+ if not rows:raise ValueError("empty BMSTU schedule")
+ kinds={"lab":"Лабораторная","lecture":"Лекция","seminar":"Семинар"};output=[];day=start
+ while day<=finish:
+  year=day.year if day.month>=9 else day.year-1;sep1=date(year,9,1);week=(day-(sep1-timedelta(days=sep1.weekday()))).days//7+1
+  for row in rows:
+   if row.get("day")!=day.weekday()+1:continue
+   parity=row.get("week","all")
+   if parity=="ch" and week%2==0 or parity=="zn" and week%2==1:continue
+   discipline=row.get("discipline") or {};title=(discipline.get("fullName") or discipline.get("shortName") or discipline.get("abbr") or "").strip()
+   if title.upper()=="ФИН УНИВЕРСИТЕТ" or title.lower()=="самостоятельная работа":continue
+   teachers=[" ".join(filter(None,(x.get("lastName"),x.get("firstName"),x.get("middleName")))) for x in row.get("teachers",[])]
+   audiences=row.get("audiences",[]);rooms=", ".join(x.get("name","") for x in audiences if x.get("name"));buildings=", ".join(dict.fromkeys(x.get("building","") for x in audiences if x.get("building")))
+   output.append({"id":f"bmstu-{day}-{row.get('day')}-{row.get('time')}-{parity}","date":day.isoformat(),"start":row.get("startTime",""),"end":row.get("endTime",""),"title":title,"type":kinds.get(discipline.get("actType"),discipline.get("actType","").title()),"room":rooms,"building":buildings,"teacher":", ".join(teachers),"teacherEmail":"","source":"bmstu"})
+  day+=timedelta(days=1)
  return output
 def schedule(query):
  today=datetime.now(MOSCOW).date();start=parse_day(query.get("start",[None])[0],today-timedelta(days=today.weekday()));finish=parse_day(query.get("finish",[None])[0],start+timedelta(days=13));finish=min(finish,start+timedelta(days=31));errors=[];lessons=[]
