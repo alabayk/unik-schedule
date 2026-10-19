@@ -19,7 +19,6 @@ def ruz_lessons(start,finish):
  rows=json.loads(fetch_text(RUZ_URL.format(group=RUZ_GROUP_ID,start=start.strftime("%Y.%m.%d"),finish=finish.strftime("%Y.%m.%d"))))
  lessons=[]
  for row in rows:
-  if row.get("discipline")=="Иностранный язык" and "Фирсова" not in row.get("lecturer",""):continue
   lessons.append({"id":f"fa-{row.get('lessonOid')}","date":row["date"],"start":row["beginLesson"],"end":row["endLesson"],"title":row["discipline"],"type":row.get("kindOfWork",""),"room":row.get("auditorium",""),"building":row.get("building",""),"teacher":row.get("lecturer",""),"teacherEmail":row.get("lecturerEmail") or row.get("email") or row.get("lecturer_email") or "","source":"fa"})
  return lessons
 def unfold_ics(text):return re.sub(r"\r?\n[ \t]","",text).replace("\r\n","\n").split("\n")
@@ -50,6 +49,14 @@ def schedule(query):
   except Exception as exc:errors.append({"source":name,"message":type(exc).__name__})
  lessons.sort(key=lambda x:(x["date"],x["start"],x["source"]));return {"lessons":lessons,"errors":errors,"updatedAt":datetime.now(MOSCOW).isoformat()}
 STATIC=Path(__file__).with_name("static")
+_raw_schedule=schedule
+def schedule(query):
+ data=_raw_schedule(query)
+ english=lambda x:x.get("source")=="fa" and bool(re.search("иностранн|английск",x.get("title",""),re.I))
+ data["englishTeachers"]=sorted({x["teacher"] for x in data["lessons"] if english(x) and x.get("teacher")})
+ teacher=query.get("teacher",["Фирсова"])[0].strip()[:160] or "Фирсова"
+ data["lessons"]=[x for x in data["lessons"] if not english(x) or teacher.casefold() in x.get("teacher","").casefold()]
+ return data
 def application(environ,start_response):
  path=environ.get("PATH_INFO","/")
  if path=="/api/calendar" and environ.get("REQUEST_METHOD")=="POST":
@@ -59,3 +66,14 @@ def application(environ,start_response):
  relative="index.html" if path=="/" else path.lstrip("/");target=(STATIC/relative).resolve()
  if STATIC.resolve() not in target.parents or not target.is_file():start_response("404 Not Found",[("Content-Type","text/plain; charset=utf-8")]);return ["Не найдено".encode("utf-8")]
  mime=mimetypes.guess_type(target.name)[0] or "application/octet-stream";start_response("200 OK",[("Content-Type",mime),("Cache-Control","public, max-age=300")]);return [target.read_bytes()]
+
+_base_application=application
+def application(environ,start_response):
+ path=environ.get("PATH_INFO","/")
+ if path=="/calendar.ics":
+  from calendar_feed import calendar_response
+  return calendar_response(environ,start_response,schedule)
+ if path in ("/","/index.html"):
+  body=(STATIC/"index.html").read_text(encoding="utf-8").replace('</head>','<link rel="stylesheet" href="/preferences.css?v=34"></head>').replace('<script src="/app.js','<script src="/preferences.js?v=34" defer></script><script src="/app.js')
+  start_response("200 OK",[("Content-Type","text/html; charset=utf-8"),("Cache-Control","no-cache")]);return [body.encode("utf-8")]
+ return _base_application(environ,start_response)
