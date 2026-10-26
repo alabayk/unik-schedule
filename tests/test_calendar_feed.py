@@ -19,6 +19,13 @@ def lesson(**changes):
 
 
 class CalendarTests(unittest.TestCase):
+    def test_military_preference_filters_feed_without_changing_stored_ids(self):
+        military = {**lesson(), "id": "fa-military", "title": "Военная подготовка"}
+        state = reconcile({}, [lesson(), military], set(), "20261019T120000Z", "2026-10-12", "2026-11-08")
+        self.assertEqual(render_feed(state, 30).count(b"BEGIN:VEVENT"), 2)
+        self.assertEqual(render_feed(state, 30, False).count(b"BEGIN:VEVENT"), 1)
+        self.assertEqual(len(state), 2)
+
     def test_move_retains_uid_and_increases_revision(self):
         initial = lesson()
         state = reconcile({}, [initial], set(), "20261019T120000Z", "2026-10-12", "2026-11-08")

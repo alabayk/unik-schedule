@@ -74,6 +74,6 @@ def application(environ,start_response):
   from calendar_feed import calendar_response
   return calendar_response(environ,start_response,schedule)
  if path in ("/","/index.html"):
-  body=(STATIC/"index.html").read_text(encoding="utf-8").replace('</head>','<link rel="stylesheet" href="/preferences.css?v=34"></head>').replace('<script src="/app.js','<script src="/preferences.js?v=34" defer></script><script src="/app.js')
+  body=(STATIC/"index.html").read_text(encoding="utf-8").replace('</head>','<link rel="stylesheet" href="/preferences.css?v=35"></head>').replace('<script src="/app.js','<script src="/preferences.js?v=35" defer></script><script src="/app.js')
   start_response("200 OK",[("Content-Type","text/html; charset=utf-8"),("Cache-Control","no-cache")]);return [body.encode("utf-8")]
  return _base_application(environ,start_response)

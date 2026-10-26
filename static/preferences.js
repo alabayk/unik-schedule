@@ -5,6 +5,16 @@
   const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
   let teacher = localStorage.getItem('english-teacher') || 'Фирсова';
   let teachers = read('english-teachers', []);
+  let showMilitary = read('show-military', true) !== false;
+  const isMilitary = x => /военн.*(?:подготов|кафедр|учебн)|(?:^|\s)вуц(?:\s|$)/i.test([x.title,x.type].filter(Boolean).join(' '));
+  const visibleLessons = rows => showMilitary ? rows : rows.filter(x => !isMilitary(x));
+  function withVisibleLessons(render) {
+    return function(...args) {
+      const all = lessons;
+      lessons = visibleLessons(all);
+      try { return render(...args); } finally { lessons = all; }
+    };
+  }
   const records = read('calendar-tracking-v1', {});
   const fields = ['source', 'id', 'date', 'start', 'end', 'title', 'teacher', 'room', 'building', 'type'];
   const copy = x => Object.fromEntries(fields.map(key => [key, x[key] || '']));
@@ -42,6 +52,7 @@
     for (const record of Object.values(records)) {
       if (record.teacher !== selectedTeacher || record.start < start || record.finish > finish) continue;
       let next = data.lessons.filter(x => x.date >= record.start && x.date <= record.finish && !failed.has(x.source));
+      if (record.showMilitary === false) next = next.filter(x => !isMilitary(x));
       if (record.scope === 'single') {
         next = next.filter(x => record.baseline.some(old => x.source === old.source &&
           (x.id === old.id || (x.date === old.date && x.title === old.title && x.type === old.type))));
@@ -103,6 +114,14 @@
     }
   }
   function settings() {
+    const militaryLabel = document.createElement('label'); militaryLabel.className = 'military-setting';
+    const military = document.createElement('input'); military.type = 'checkbox'; military.id = 'show-military'; military.checked = showMilitary;
+    const militaryText = document.createElement('span'); militaryText.textContent = 'Показывать военную подготовку';
+    militaryLabel.append(military, militaryText);
+    military.onchange = () => {
+      showMilitary = military.checked; save('show-military', showMilitary);
+      renderLessons(); renderInsights();
+    };
     const label = document.createElement('label'); label.textContent = 'Преподаватель английского';
     const select = document.createElement('select'); select.id = 'english-teacher-select'; label.append(select);
     select.onchange = () => {
@@ -111,7 +130,7 @@
       Object.keys(localStorage).filter(key => key.startsWith('week:')).forEach(key => localStorage.removeItem(key));
       closeMenu(); location.reload();
     };
-    openMenu('Настройки', [label, paragraph('Выбор сохраняется на этом устройстве и применяется к расписанию и новым экспортам. Для загрузки другого преподавателя требуется интернет.'),
+    openMenu('Настройки', [militaryLabel, paragraph('Отключите, если не посещаете военную кафедру. Выбор сохраняется на этом устройстве и действует также офлайн.'),label, paragraph('Выбор сохраняется на этом устройстве и применяется к расписанию и новым экспортам. Для загрузки другого преподавателя требуется интернет.'),
       paragraph('Преподаватели появляются в списке после загрузки недель, где есть английский.'),
       button('Подписаться на расписание', subscription, 'preferences-primary'),
       paragraph('Уведомления об изменениях показываются при открытии приложения после успешного обновления расписания.')]);
@@ -124,14 +143,14 @@
       const option = document.createElement('option'); option.value=minutes; option.textContent=minutes?`За ${minutes} минут`:'Не напоминать'; option.selected=minutes===30; select.append(option);
     }
     const input = document.createElement('input'); input.readOnly=true; input.setAttribute('aria-label','Ссылка подписки');
-    const update = () => { const url = new URL('/calendar.ics',location.origin); url.searchParams.set('teacher',teacher); url.searchParams.set('alarm',select.value); input.value=url.href; };
+    const update = () => { const url = new URL('/calendar.ics',location.origin); url.searchParams.set('teacher',teacher); url.searchParams.set('alarm',select.value); url.searchParams.set('military',showMilitary?'1':'0'); input.value=url.href; };
     select.onchange=update; update();
     const actions = /iPhone|iPad|iPod/.test(navigator.userAgent) ? [button('Открыть подписку в календаре',()=>{location.href=input.value.replace(/^https?:/,'webcal:');},'preferences-primary')] : [];
     actions.push(button('Скопировать ссылку',async()=>{try{await navigator.clipboard.writeText(input.value);status.textContent='Ссылка скопирована';}catch{input.focus();input.select();status.textContent='Выделенная ссылка готова для копирования';}}));
     const status = paragraph(''); status.setAttribute('role','status');
-    openMenu('Подписаться на расписание',[note, paragraph(`Английский: ${teacher}`),select,input,...actions,status,
+    openMenu('Подписаться на расписание',[note, paragraph(`Английский: ${teacher}. Военная подготовка: ${showMilitary?'показывается':'скрыта'}.`),select,input,...actions,status,
       paragraph('На Android: Google Calendar в веб-версии на компьютере → Другие календари → По URL. Затем включите календарь на телефоне.'),
-      paragraph('Ранее импортированные события остаются отдельными копиями. Чтобы избежать дублей, удалите их один раз. После изменения преподавателя добавьте новую ссылку вместо старой.')]);
+      paragraph('Ранее импортированные события остаются отдельными копиями. Чтобы избежать дублей, удалите их один раз. После изменения преподавателя или военной подготовки добавьте новую ссылку вместо старой.')]);
   }
   function renderWarnings() {
     const root = document.getElementById('calendar-warnings'); root.replaceChildren();
@@ -162,11 +181,14 @@
   }
   document.addEventListener('DOMContentLoaded',()=>{
     mounted=true;
+    renderLessons=withVisibleLessons(renderLessons);
+    renderInsights=withVisibleLessons(renderInsights);
+    renderLessons(); renderInsights();
     const main=document.querySelector('main'),warnings=document.createElement('div');warnings.id='calendar-warnings';
     document.getElementById('insights').before(warnings);
     const footer=document.createElement('footer');footer.className='preferences-footer';footer.append(button('Настройки',settings));main.append(footer);
     const menu=document.createElement('div');menu.id='preferences-menu';menu.hidden=true;document.body.append(menu);
-    document.getElementById('week-calendar').onclick=()=>{exportScope={scope:'week',start:iso(monday),finish:iso(addDays(monday,6))};calOpen(lessons.filter(x=>x.date>=exportScope.start&&x.date<=exportScope.finish));};
+    document.getElementById('week-calendar').onclick=()=>{exportScope={scope:'week',start:iso(monday),finish:iso(addDays(monday,6))};calOpen(visibleLessons(lessons).filter(x=>x.date>=exportScope.start&&x.date<=exportScope.finish));};
     document.getElementById('lesson-calendar').onclick=()=>{exportScope={scope:'single',start:selectedLesson.date,finish:selectedLesson.date};calOpen([selectedLesson]);};
     const originalOpen=calOpen;
     calOpen=function(items){originalOpen(items);const confirmed=Object.values(records).some(r=>r.teacher===teacher&&signature(r.baseline)===signature(items));document.getElementById('calendar-state').textContent=confirmed?'Уже добавили':'';};
@@ -174,8 +196,8 @@
       if(!calendarItems.length)return;
       const scope=exportScope||{scope:'single',start:calendarItems[0].date,finish:calendarItems[0].date};
       const items=calendarItems.map(copy),label=scope.start===scope.finish?scope.start:`${scope.start} — ${scope.finish}`;
-      const key=JSON.stringify([teacher,scope.scope,scope.start,scope.finish,scope.scope==='single'?items[0].id:'']);
-      const pending={...scope,key,teacher,label,items};
+      const key=JSON.stringify([teacher,scope.scope,scope.start,scope.finish,scope.scope==='single'?items[0].id:'',showMilitary]);
+      const pending={...scope,key,teacher,label,items,showMilitary};
       const alarm=Number(document.querySelector('input[name="alarm"]:checked').value),ics=buildIcs(calendarItems,alarm);
       const file=new File([ics],`vanchunik-${scope.start}.ics`,{type:'text/calendar'});
       try {

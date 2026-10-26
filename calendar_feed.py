@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 import sqlite3
 import uuid
 from contextlib import closing
@@ -64,12 +65,14 @@ def utc_time(lesson, field):
     return datetime.fromisoformat(lesson["date"] + "T" + lesson[field]).replace(tzinfo=MOSCOW).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def render_feed(events, alarm):
+def render_feed(events, alarm, show_military=True):
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Vanchunik//Schedule//RU",
              "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:Финунивер им. Н.Э. Баумана",
              "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H"]
     for key, item in sorted(events.items(), key=lambda pair: (pair[1]["lesson"]["date"], pair[1]["lesson"]["start"])):
         x = item["lesson"]
+        if not show_military and re.search(r"военн.*(?:подготов|кафедр|учебн)|(?:^|\s)вуц(?:\s|$)", x.get("title", "") + " " + x.get("type", ""), re.I):
+            continue
         lines += ["BEGIN:VEVENT", "UID:" + key + "@vanchunik.alwaysdata.net",
                   "DTSTAMP:" + item["modified"], "LAST-MODIFIED:" + item["modified"],
                   "SEQUENCE:" + str(item["sequence"]), "DTSTART:" + utc_time(x, "start"),
@@ -117,7 +120,7 @@ def calendar_response(environ, start_response, schedule):
                     raise RuntimeError("initial calendar sources unavailable")
                 events = reconcile(events, data["lessons"], failed, now.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ"), start.isoformat(), finish.isoformat())
                 db.execute("INSERT OR REPLACE INTO feeds VALUES (?,?,?)", (teacher, now.timestamp(), json.dumps(events, ensure_ascii=False)))
-        body = render_feed(events, alarm)
+        body = render_feed(events, alarm, query.get("military", ["1"])[0] != "0")
     except Exception:
         start_response("503 Service Unavailable", [("Content-Type", "text/plain; charset=utf-8"), ("Retry-After", "300")])
         return ["Расписание временно недоступно. Сохраните текущую подписку и повторите позже.".encode("utf-8")]
