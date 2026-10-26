@@ -29,6 +29,6 @@ jobs:
           base="https://webdav-vanchunik.alwaysdata.net"
           auth="vanchunik_deploy:${DAV_PASSWORD}"
           curl --silent --user "$auth" -X MKCOL "$base/static/" || true
-          for file in calendar_feed.py requirements.txt README.md static/index.html static/style.css static/sheet.css static/app.js static/preferences.js static/preferences.css static/manifest.webmanifest static/icon.svg static/exec-5fe81217-9624-47c1-b7b3-39e57179c4a1.png application.py static/sw.js; do
+          for file in calendar_feed.py requirements.txt README.md static/index.html static/style.css static/sheet.css static/themes.css static/app.js static/preferences.js static/preferences.css static/manifest.webmanifest static/icon.svg static/exec-5fe81217-9624-47c1-b7b3-39e57179c4a1.png application.py static/sw.js; do
             curl --fail --silent --show-error --user "$auth" --upload-file "$file" "$base/$file"
           done

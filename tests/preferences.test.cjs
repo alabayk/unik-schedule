@@ -7,7 +7,7 @@ const baseline = {...fixture};
 const storage = new Map([['calendar-tracking-v1',JSON.stringify({week:{teacher:'Фирсова',scope:'week',start:'2026-10-19',finish:'2026-10-25',baseline:[baseline],current:[baseline],changes:[],dismissed:true}})]]);
 let response, requested;
 const makeContext = () => ({URL,URLSearchParams,console,setTimeout,location:{href:'https://example.test/',origin:'https://example.test'},
-  document:{addEventListener(){}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
+  document:{documentElement:{dataset:{}},querySelector(){return null;},addEventListener(){}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
   window:{fetch:async url=>{requested=url;return {ok:true,clone:()=>({json:async()=>response})};}}});
 let context=makeContext();
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/preferences.js'),'utf8'),context);

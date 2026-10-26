@@ -4,7 +4,7 @@ class Element {
   constructor(tag){this.tagName=tag;this.children=[];this.dataset={};this.hidden=false;this.classList={add(){},remove(){}};}
   set id(value){this._id=value;ids.set(value,this);}get id(){return this._id;}
   append(...items){this.children.push(...items);}replaceChildren(...items){this.children=items;}
-  setAttribute(){}before(){}focus(){focused=this;}select(){}
+  setAttribute(key,value){this[key]=value;}before(){}focus(){focused=this;}select(){}
   querySelectorAll(){return this.children.flatMap(x=>[x,...(x.children||[])]).filter(x=>['button','input','select'].includes(x.tagName));}
 }
 const main=new Element('main');for(const id of ['insights','calendar-state','week-calendar','lesson-calendar','calendar-add','sheet']){const el=new Element('div');el.id=id;}
@@ -12,7 +12,7 @@ ids.get('sheet').hidden=true;
 const fixture={id:'fa-42',source:'fa',date:'2026-10-20',start:'10:10',end:'11:40',title:'Английский',teacher:'Фирсова',room:'308',building:'Москва',type:'Семинар'};
 const militaryFixture={...fixture,id:'fa-military',title:'Военная подготовка'};
 let displayed=[];
-const doc={createElement:tag=>new Element(tag),getElementById:id=>ids.get(id)||null,body:new Element('body'),visibilityState:'visible',
+const doc={documentElement:{dataset:{}},createElement:tag=>new Element(tag),getElementById:id=>ids.get(id)||null,body:new Element('body'),visibilityState:'visible',
   activeElement:null,addEventListener:(name,fn)=>events[name]=fn,querySelector:q=>q==='main'?main:{value:'30'}};
 const context={console,URL,URLSearchParams,File,document:doc,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},
   location:{href:'https://example.test/',origin:'https://example.test',reload(){}},navigator:{userAgent:'Android',canShare:()=>true,share:async()=>{}},isAndroid:true,
@@ -38,6 +38,10 @@ ids.get('lesson-calendar').onclick();
   ids.get('lesson-calendar').onclick();assert.equal(ids.get('calendar-state').textContent,'Уже добавили');
   main.children.at(-1).children[0].onclick();
   const select=ids.get('english-teacher-select');assert.ok(select);assert.equal(select.children[0].value,'Фирсова');
+  const themeSwitch=ids.get('theme-switch');assert.equal(doc.documentElement.dataset.theme,'light');
+  themeSwitch.children[1].onclick();assert.equal(storage.get('app-theme'),'dark');assert.equal(doc.documentElement.dataset.theme,'dark');
+  assert.equal(themeSwitch.children[1]['aria-pressed'],'true');assert.equal(themeSwitch.children[0]['aria-pressed'],'false');
+  themeSwitch.children[0].onclick();assert.equal(storage.get('app-theme'),'light');assert.equal(doc.documentElement.dataset.theme,'light');
   const military=ids.get('show-military');assert.equal(military.checked,true);
   military.checked=false;military.onchange();
   assert.equal(storage.get('show-military'),'false');

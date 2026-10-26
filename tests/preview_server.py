@@ -20,5 +20,5 @@ def fixture(query):
 
 if __name__ == '__main__':
     application._raw_schedule = fixture
-    with make_server('127.0.0.1', 8766, application.application) as server:
+    with make_server('127.0.0.1', int(sys.argv[1]) if len(sys.argv) > 1 else 8766, application.application) as server:
         server.serve_forever()

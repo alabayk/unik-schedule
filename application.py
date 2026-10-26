@@ -74,6 +74,7 @@ def application(environ,start_response):
   from calendar_feed import calendar_response
   return calendar_response(environ,start_response,schedule)
  if path in ("/","/index.html"):
-  body=(STATIC/"index.html").read_text(encoding="utf-8").replace('</head>','<link rel="stylesheet" href="/preferences.css?v=35"></head>').replace('<script src="/app.js','<script src="/preferences.js?v=35" defer></script><script src="/app.js')
+  theme_boot="""<script>(()=>{let t='light';try{if(localStorage.getItem('app-theme')==='dark')t='dark'}catch{}document.documentElement.dataset.theme=t;document.querySelector('meta[name="theme-color"]').content=t==='dark'?'#10141c':'#f4f5f7'})()</script>"""
+  body=(STATIC/"index.html").read_text(encoding="utf-8").replace('</head>',theme_boot+'<link rel="stylesheet" href="/preferences.css?v=36"><link rel="stylesheet" href="/themes.css?v=36"></head>').replace('<script src="/app.js','<script src="/preferences.js?v=36" defer></script><script src="/app.js')
   start_response("200 OK",[("Content-Type","text/html; charset=utf-8"),("Cache-Control","no-cache")]);return [body.encode("utf-8")]
  return _base_application(environ,start_response)

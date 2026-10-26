@@ -5,6 +5,14 @@
   const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
   let teacher = localStorage.getItem('english-teacher') || 'Фирсова';
   let teachers = read('english-teachers', []);
+  let theme = localStorage.getItem('app-theme') === 'dark' ? 'dark' : 'light';
+  function applyTheme(value) {
+    theme = value === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme === 'dark' ? '#10141c' : '#f4f5f7';
+  }
+  applyTheme(theme);
   let showMilitary = read('show-military', true) !== false;
   const isMilitary = x => /военн.*(?:подготов|кафедр|учебн)|(?:^|\s)вуц(?:\s|$)/i.test([x.title,x.type].filter(Boolean).join(' '));
   const visibleLessons = rows => showMilitary ? rows : rows.filter(x => !isMilitary(x));
@@ -114,6 +122,22 @@
     }
   }
   function settings() {
+    const themeLabel = document.createElement('div'); themeLabel.className = 'theme-label'; themeLabel.textContent = 'Тема приложения';
+    const themeSwitch = document.createElement('div'); themeSwitch.className = 'theme-switch'; themeSwitch.id = 'theme-switch';
+    themeSwitch.setAttribute('role','group'); themeSwitch.setAttribute('aria-label','Тема приложения');
+    const themeButtons = [];
+    const refreshThemeButtons = () => {
+      themeSwitch.dataset.theme = theme;
+      themeButtons.forEach(b => b.setAttribute('aria-pressed',String(b.dataset.value === theme)));
+    };
+    for (const [value, text, icon] of [['light','Светлая','☀'],['dark','Тёмная','☾']]) {
+      const b = button('',()=>{applyTheme(value);localStorage.setItem('app-theme',theme);refreshThemeButtons();});
+      b.dataset.value = value;
+      const symbol = document.createElement('span'); symbol.className='theme-icon';symbol.textContent=icon;symbol.setAttribute('aria-hidden','true');
+      const caption = document.createElement('span');caption.textContent=text;b.append(symbol,caption);b.setAttribute('aria-label',text);
+      themeButtons.push(b);themeSwitch.append(b);
+    }
+    refreshThemeButtons();
     const militaryLabel = document.createElement('label'); militaryLabel.className = 'military-setting';
     const military = document.createElement('input'); military.type = 'checkbox'; military.id = 'show-military'; military.checked = showMilitary;
     const militaryText = document.createElement('span'); militaryText.textContent = 'Показывать военную подготовку';
@@ -130,7 +154,7 @@
       Object.keys(localStorage).filter(key => key.startsWith('week:')).forEach(key => localStorage.removeItem(key));
       closeMenu(); location.reload();
     };
-    openMenu('Настройки', [militaryLabel, paragraph('Отключите, если не посещаете военную кафедру. Выбор сохраняется на этом устройстве и действует также офлайн.'),label, paragraph('Выбор сохраняется на этом устройстве и применяется к расписанию и новым экспортам. Для загрузки другого преподавателя требуется интернет.'),
+    openMenu('Настройки', [themeLabel,themeSwitch,militaryLabel, paragraph('Отключите, если не посещаете военную кафедру. Выбор сохраняется на этом устройстве и действует также офлайн.'),label, paragraph('Выбор сохраняется на этом устройстве и применяется к расписанию и новым экспортам. Для загрузки другого преподавателя требуется интернет.'),
       paragraph('Преподаватели появляются в списке после загрузки недель, где есть английский.'),
       button('Подписаться на расписание', subscription, 'preferences-primary'),
       paragraph('Уведомления об изменениях показываются при открытии приложения после успешного обновления расписания.')]);
