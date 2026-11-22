@@ -21,6 +21,7 @@ jobs:
           python tests/test_calendar_feed.py
           node tests/preferences.test.cjs
           node tests/preferences-ui.test.cjs
+          node tests/mouse-slides.test.cjs
           node --check static/preferences.js
       - name: Upload application over HTTPS WebDAV
         env:
